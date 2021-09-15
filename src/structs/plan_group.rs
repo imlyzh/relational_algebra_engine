@@ -2,6 +2,7 @@
    Copyright (C) 2021-2021 imlyzh.
 
 This file is part of RAE(Relational Algebra Engine).
+This file is Plan Group of RAE.
 RAE is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
 Software Foundation; either version 3, or (at your option) any later

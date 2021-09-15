@@ -2,6 +2,7 @@
    Copyright (C) 2021-2021 imlyzh.
 
 This file is part of RAE(Relational Algebra Engine).
+This file is Type System of RAE.
 RAE is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
 Software Foundation; either version 3, or (at your option) any later
@@ -31,7 +32,7 @@ pub enum TypeError {
 
 // table info
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Env(pub HashMap<TableName, Lines>, pub HashMap<Symbol, Type>);
 
 impl Env {
@@ -43,7 +44,7 @@ impl Env {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Optional(Optional),
     Record(Record),
@@ -74,39 +75,39 @@ impl Type {
 
 // type or null
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Optional(pub Box<Type>);
 
 // adhoc-union type
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Union(pub Vec<Type>);
 
 // record(struct) type
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Record(pub HashMap<Symbol, Type>);
 
 // Reletation etc.
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Lines(pub Record);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TableName(pub String);
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SimpleType {
     Int(Option<Domain<i64>>),
     Uint(Option<Domain<u64>>),
-    Float(Option<Domain<u64>>),
+    Float(Option<Domain<f64>>),
     String(Vec<String>),
 }
 
 // refinement type
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Domain<T> {
-    Range(Box<Domain<T>>, Box<Domain<T>>),
+    Range(T, T),
     // Enum(Vec<Domain<T>>),
     Value(T),
 }

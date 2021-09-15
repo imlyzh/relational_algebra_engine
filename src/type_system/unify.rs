@@ -1,4 +1,22 @@
+/*
+   Copyright (C) 2021-2021 imlyzh.
+
+This file is part of RAE(Relational Algebra Engine).
+This file is Type Unify of RAE.
+RAE is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 3, or (at your option) any later
+version.
+RAE is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
+You should have received a copy of the GNU General Public License
+along with RAE; see the file COPYING3.  If not see
+<http://www.gnu.org/licenses/>.  */
+
 use std::collections::HashMap;
+use std::cmp;
 
 use crate::structs::Symbol;
 
@@ -6,12 +24,14 @@ use super::{Domain, Lines, Optional, Record, SimpleType, Type, TypeError};
 
 pub trait Unify {
     type Output;
-    fn unify(&self, r: &Self) -> Result<Self::Output, TypeError>;
+    type Error;
+    fn unify(&self, r: &Self) -> Result<Self::Output, Self::Error>;
 }
 
 impl Unify for Type {
     type Output = Self;
-    fn unify(&self, r: &Self) -> Result<Self::Output, TypeError> {
+    type Error = TypeError;
+    fn unify(&self, r: &Self) -> Result<Self::Output, Self::Error> {
         match (self, r) {
             (Type::Optional(t1), Type::Optional(t2)) => t1.unify(t2).map(Type::Optional),
             (Type::Optional(Optional(t1)), t2) => t1.unify(t2),
@@ -35,31 +55,48 @@ impl Unify for Type {
 
 impl Unify for Optional {
     type Output = Self;
-    fn unify(&self, r: &Self) -> Result<Self::Output, TypeError> {
+    type Error = TypeError;
+    fn unify(&self, r: &Self) -> Result<Self::Output, Self::Error> {
         self.0.unify(&r.0)?;
         Ok(self.clone())
     }
 }
 
+// error_domain_to_type
+
+macro_rules! impl_edt {
+    ($id:ident, $tp:ident, $en:ident) => {
+        fn $id((l, r): (Domain<$tp>, Domain<$tp>)) -> TypeError {
+            TypeError::TypeUnifyError(
+                Type::Simple(SimpleType::$en(Some(l))),
+                Type::Simple(SimpleType::$en(Some(r)))
+            )
+        }
+    };
+}
+
+impl_edt!(edti, i64, Int);
+impl_edt!(edtu, u64, Uint);
+impl_edt!(edtf, f64, Float);
+
+
 impl Unify for SimpleType {
     type Output = Self;
-    fn unify(&self, r: &Self) -> Result<Self::Output, TypeError> {
+    type Error = TypeError;
+    fn unify(&self, r: &Self) -> Result<Self::Output, Self::Error> {
         let r = match (self.clone(), r.clone()) {
             (SimpleType::Int(d), SimpleType::Int(None))
             | (SimpleType::Int(None), SimpleType::Int(d)) => SimpleType::Int(d.clone()),
-            (SimpleType::Int(d1), SimpleType::Int(d2)) => {
-                SimpleType::Int(Some(d1.unwrap().unify(&d2.unwrap())?))
-            }
+            (SimpleType::Int(d1), SimpleType::Int(d2)) =>
+                SimpleType::Int(Some(d1.unwrap().unify(&d2.unwrap()).map_err(edti)?)),
             (SimpleType::Uint(d), SimpleType::Uint(None))
             | (SimpleType::Uint(None), SimpleType::Uint(d)) => SimpleType::Uint(d.clone()),
-            (SimpleType::Uint(d1), SimpleType::Uint(d2)) => {
-                SimpleType::Uint(Some(d1.unwrap().unify(&d2.unwrap())?))
-            }
+            (SimpleType::Uint(d1), SimpleType::Uint(d2)) =>
+                SimpleType::Uint(Some(d1.unwrap().unify(&d2.unwrap()).map_err(edtu)?)),
             (SimpleType::Float(d), SimpleType::Float(None))
             | (SimpleType::Float(None), SimpleType::Float(d)) => SimpleType::Float(d.clone()),
-            (SimpleType::Float(d1), SimpleType::Float(d2)) => {
-                SimpleType::Float(Some(d1.unwrap().unify(&d2.unwrap())?))
-            }
+            (SimpleType::Float(d1), SimpleType::Float(d2)) =>
+                SimpleType::Float(Some(d1.unwrap().unify(&d2.unwrap()).map_err(edtf)?)),
             (SimpleType::String(d1), SimpleType::String(d2)) => {
                 if d1.len() == 0 {
                     SimpleType::String(d1.clone())
@@ -84,16 +121,29 @@ impl Unify for SimpleType {
     }
 }
 
-impl<T> Unify for Domain<T> {
+impl<T: Clone + cmp::PartialOrd + cmp::PartialOrd> Unify for Domain<T> {
     type Output = Self;
-    fn unify(&self, r: &Self) -> Result<Self::Output, TypeError> {
-        todo!()
+    type Error = (Domain<T>, Domain<T>);
+    fn unify(&self, r: &Self) -> Result<Self::Output, Self::Error> {
+        let ret = match (self, r) {
+            (Domain::Range(l1, r1), Domain::Range(l2, r2)) =>
+                if l1 <= l2 && r1 >= r2 {
+                    self
+                } else {
+                    return Err((self.clone(), r.clone()));
+                },
+            (Domain::Range(l, r), Domain::Value(_)) => todo!(),
+            (Domain::Value(_), Domain::Range(_, _)) => todo!(),
+            (Domain::Value(_), Domain::Value(_)) => todo!(),
+        };
+        Ok(ret.clone())
     }
 }
 
 impl Unify for Lines {
     type Output = Self;
-    fn unify(&self, r: &Self) -> Result<Self::Output, TypeError> {
+    type Error = TypeError;
+    fn unify(&self, r: &Self) -> Result<Self::Output, Self::Error> {
         self.0.unify(&r.0).map(Lines)
     }
 }
@@ -113,7 +163,8 @@ fn merge_double_map_from_key(
 
 impl Unify for Record {
     type Output = Self;
-    fn unify(&self, r: &Self) -> Result<Self::Output, TypeError> {
+    type Error = TypeError;
+    fn unify(&self, r: &Self) -> Result<Self::Output, Self::Error> {
         let nullables: Vec<_> = self.0.iter().filter(|(_, v)| v.is_optional()).collect();
         if self.0.len() == r.0.len() {
             let r: Result<HashMap<Symbol, Type>, _> = self

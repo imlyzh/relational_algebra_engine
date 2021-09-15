@@ -20,11 +20,14 @@ pub mod plan_group;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
-    Add(Box<Expr>),
-    Sub(Box<Expr>),
-    Mul(Box<Expr>),
-    Div(Box<Expr>),
-    Mod(Box<Expr>),
+    Add(Box<Expr>, Box<Expr>),
+    Sub(Box<Expr>, Box<Expr>),
+    Mul(Box<Expr>, Box<Expr>),
+    Div(Box<Expr>, Box<Expr>),
+    Mod(Box<Expr>, Box<Expr>),
+    And(Box<Expr>, Box<Expr>),
+    Or(Box<Expr>, Box<Expr>),
+    Not(Box<Expr>),
     Value(Value)
 }
 

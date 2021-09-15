@@ -20,7 +20,7 @@ use super::{Expr, Symbol};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Plan {
-    CartesianProduct(Box<Plan>, Box<Plan>), // 笛卡尔积
+    Product(Box<Plan>, Box<Plan>), // 笛卡尔积
     Union(Box<Plan>, Box<Plan>),            // 并集
     Difference(Box<Plan>, Box<Plan>),       // 差集
     Intersect(Box<Plan>, Box<Plan>),        // 交集

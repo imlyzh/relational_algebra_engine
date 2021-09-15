@@ -28,7 +28,7 @@ struct PlanGroup {
 
 #[derive(Debug, Clone, PartialEq)]
 enum OperItem {
-    CartesianProduct(Box<PlanGroup>, Box<PlanGroup>),
+    Product(Box<PlanGroup>, Box<PlanGroup>),
     Difference(Box<PlanGroup>, Box<PlanGroup>),
     Intersect(Box<PlanGroup>, Box<PlanGroup>),
     Division(Box<PlanGroup>, Box<PlanGroup>),
@@ -100,7 +100,7 @@ fn load_plan(
     item_reduce: &mut Option<ReduceOperator>,
 ) -> OperItem {
     match i {
-        Plan::CartesianProduct(a, b) => OperItem::CartesianProduct(a.into(), b.into()),
+        Plan::Product(a, b) => OperItem::Product(a.into(), b.into()),
         Plan::Difference(a, b) => OperItem::Difference(a.into(), b.into()),
         Plan::Intersect(a, b) => OperItem::Intersect(a.into(), b.into()),
         Plan::Division(a, b) => OperItem::Division(a.into(), b.into()),
@@ -108,7 +108,7 @@ fn load_plan(
         Plan::Table(t) => OperItem::Table(t),
         Plan::Selection(a, b) => {
             if let plan::FilterExpr::And(v) = *b {
-                let iter = v.into_iter().map(|x| FilterExpr::Comp(x.into()));
+                let iter = v.into_iter().rev().map(|x| FilterExpr::Comp(x.into()));
                 selection.extend(iter);
             } else {
                 selection.push(b.into());

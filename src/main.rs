@@ -16,7 +16,7 @@ along with RAE; see the file COPYING3.  If not see
 
 mod parser;
 mod structs;
-mod type_check;
+mod type_system;
 
 fn main() {
     println!("Hello, world!");

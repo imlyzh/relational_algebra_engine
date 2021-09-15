@@ -65,7 +65,15 @@ impl From<Plan> for PlanGroup {
         let mut selection: Vec<FilterExpr> = vec![];
         let mut projection: Vec<Symbol> = vec![];
         let mut item_reduce: Option<ReduceOperator> = None;
-        load_plan(i, &mut selection, &mut projection, &mut item_reduce)
+        let oper_item: OperItem = load_plan(i, &mut selection, &mut projection, &mut item_reduce);
+        selection.reverse();
+        projection.reverse();
+        Self {
+            oper_item,
+            selection,
+            projection,
+            item_reduce,
+        }
     }
 }
 
@@ -74,49 +82,17 @@ fn load_plan(
     selection: &mut Vec<FilterExpr>,
     projection: &mut Vec<Symbol>,
     item_reduce: &mut Option<ReduceOperator>,
-) -> PlanGroup {
+) -> OperItem {
     match i {
-        Plan::CartesianProduct(a, b) => PlanGroup {
-            oper_item: OperItem::CartesianProduct(a.into(), b.into()),
-            selection: selection.clone(),
-            projection: projection.clone(),
-            item_reduce: item_reduce.clone(),
-        },
-        Plan::Union(a, b) => PlanGroup {
-            oper_item: OperItem::Union(a.into(), b.into()),
-            selection: selection.clone(),
-            projection: projection.clone(),
-            item_reduce: item_reduce.clone(),
-        },
-        Plan::Difference(a, b) => PlanGroup {
-            oper_item: OperItem::Difference(a.into(), b.into()),
-            selection: selection.clone(),
-            projection: projection.clone(),
-            item_reduce: item_reduce.clone(),
-        },
-        Plan::Intersect(a, b) => PlanGroup {
-            oper_item: OperItem::Intersect(a.into(), b.into()),
-            selection: selection.clone(),
-            projection: projection.clone(),
-            item_reduce: item_reduce.clone(),
-        },
-        Plan::Division(a, b) => PlanGroup {
-            oper_item: OperItem::Division(a.into(), b.into()),
-            selection: selection.clone(),
-            projection: projection.clone(),
-            item_reduce: item_reduce.clone(),
-        },
-        Plan::Table(t) => PlanGroup {
-            oper_item: OperItem::Table(t),
-            selection: selection.clone(),
-            projection: projection.clone(),
-            item_reduce: item_reduce.clone(),
-        },
+        Plan::CartesianProduct(a, b) => OperItem::CartesianProduct(a.into(), b.into()),
+        Plan::Difference(a, b) => OperItem::Difference(a.into(), b.into()),
+        Plan::Intersect(a, b) => OperItem::Intersect(a.into(), b.into()),
+        Plan::Division(a, b) => OperItem::Division(a.into(), b.into()),
+        Plan::Union(a, b) => OperItem::Union(a.into(), b.into()),
+        Plan::Table(t) => OperItem::Table(t),
         Plan::Selection(a, b) => {
             if let plan::FilterExpr::And(v) = *b {
-                let iter = v
-                    .into_iter()
-                    .map(|x| FilterExpr::Comp(x.into()));
+                let iter = v.into_iter().map(|x| FilterExpr::Comp(x.into()));
                 selection.extend(iter);
             } else {
                 selection.push(b.into());
@@ -177,7 +153,7 @@ impl From<plan::FilterExpr> for FilterExpr {
     fn from(i: plan::FilterExpr) -> Self {
         match i {
             plan::FilterExpr::And(_) => unreachable!(),
-            plan::FilterExpr::Or(a) => FilterExpr::Or(a.into_iter().map(|x|x.into()).collect()),
+            plan::FilterExpr::Or(a) => FilterExpr::Or(a.into_iter().map(|x| x.into()).collect()),
             plan::FilterExpr::Not(a) => FilterExpr::Not(a.into()),
             plan::FilterExpr::Comp(a) => FilterExpr::Comp(a.into()),
             plan::FilterExpr::Range(a, b) => FilterExpr::Range(a, b),

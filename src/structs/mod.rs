@@ -28,7 +28,7 @@ pub enum Expr {
     And(Box<Expr>, Box<Expr>),
     Or(Box<Expr>, Box<Expr>),
     Not(Box<Expr>),
-    Value(Value)
+    Value(Value),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -43,4 +43,4 @@ pub enum Value {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Symbol (pub String, pub Option<String>);
+pub struct Symbol(pub String, pub Option<String>);

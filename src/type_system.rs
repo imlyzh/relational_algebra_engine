@@ -14,40 +14,35 @@ You should have received a copy of the GNU General Public License
 along with RAE; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
-
 use std::{collections::HashMap, ops};
 
 use crate::structs::Symbol;
 
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
-
+    Optional(Optional),
+    Record(Record),
+    Simple(SimpleType),
 }
-
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Optional(pub Box<Type>);
 
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Union(pub Vec<Type>);
-
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Record(pub HashMap<Symbol, Type>);
 
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Special(pub String, pub Vec<Type>);
-
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SimpleType {
     Null,
-    Int(Domain<i64>),
-    Uint(Domain<u64>),
-    Float(Domain<u64>),
+    Int(Option<Domain<i64>>),
+    Uint(Option<Domain<u64>>),
+    Float(Option<Domain<u64>>),
     String(Vec<String>),
 }
 
@@ -57,7 +52,6 @@ enum Domain<T> {
     // Enum(Vec<Domain<T>>),
     Value(T),
 }
-
 
 impl<T: Clone + ops::Add<Output = T>> ops::Add<Box<Domain<T>>> for Box<Domain<T>> {
     type Output = Box<Domain<T>>;
@@ -80,15 +74,13 @@ impl<T: Clone + ops::Add<Output = T>> ops::Add<Domain<T>> for Domain<T> {
 
     fn add(self, rhs: Domain<T>) -> Self::Output {
         match (self, rhs) {
-            (Domain::Range(l1, r1), Domain::Range(l2, r2)) => Domain::Range(l1+l2, r1+r2),
-            (Domain::Value(v1), Domain::Value(v2)) => Domain::Value(v1+v2),
+            (Domain::Range(l1, r1), Domain::Range(l2, r2)) => Domain::Range(l1 + l2, r1 + r2),
+            (Domain::Value(v1), Domain::Value(v2)) => Domain::Value(v1 + v2),
 
-            (Domain::Range(l, r), Domain::Value(v)) |
-            (Domain::Value(v), Domain::Range(l, r)) => {
+            (Domain::Range(l, r), Domain::Value(v)) | (Domain::Value(v), Domain::Range(l, r)) => {
                 let v = Domain::Value(v);
-                Domain::Range(l+v.clone(), r+v)
-            },
-
+                Domain::Range(l + v.clone(), r + v)
+            }
             /*
             (Domain::Enum(a), Domain::Enum(b)) => {
                 let r = a.join(b);

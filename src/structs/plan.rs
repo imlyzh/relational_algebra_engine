@@ -14,21 +14,19 @@ You should have received a copy of the GNU General Public License
 along with RAE; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
-
 use super::{Expr, Symbol};
-
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Plan {
-    Product(Box<Plan>, Box<Plan>), // 笛卡尔积
-    Union(Box<Plan>, Box<Plan>),            // 并集
-    Difference(Box<Plan>, Box<Plan>),       // 差集
-    Intersect(Box<Plan>, Box<Plan>),        // 交集
-    Selection(Box<Plan>, Box<FilterExpr>),  // 选择
-    Projection(Box<Plan>, Vec<Symbol>),     // 投影
-    Division(Box<Plan>, Box<Plan>),         // 除
-    Reduce(ItemReduce),                     // 聚合
-    Table(String)
+    Product(Box<Plan>, Box<Plan>),         // 笛卡尔积
+    Union(Box<Plan>, Box<Plan>),           // 并集
+    Difference(Box<Plan>, Box<Plan>),      // 差集
+    Intersect(Box<Plan>, Box<Plan>),       // 交集
+    Selection(Box<Plan>, Box<FilterExpr>), // 选择
+    Projection(Box<Plan>, Vec<Symbol>),    // 投影
+    Division(Box<Plan>, Box<Plan>),        // 除
+    Reduce(ItemReduce),                    // 聚合
+    Table(String),
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -18,18 +18,32 @@ pub mod ast;
 pub mod plan;
 pub mod plan_group;
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Pos {
+    offset: usize,
+    line: usize,
+    col: usize,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Loc<T>(pub T, pub Pos);
+
+pub type LocExpr = Loc<Expr>;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
-    Add(Box<Expr>, Box<Expr>),
-    Sub(Box<Expr>, Box<Expr>),
-    Mul(Box<Expr>, Box<Expr>),
-    Div(Box<Expr>, Box<Expr>),
-    Mod(Box<Expr>, Box<Expr>),
-    And(Box<Expr>, Box<Expr>),
-    Or(Box<Expr>, Box<Expr>),
-    Not(Box<Expr>),
-    Value(Value),
+    Add(Box<LocExpr>, Box<LocExpr>),
+    Sub(Box<LocExpr>, Box<LocExpr>),
+    Mul(Box<LocExpr>, Box<LocExpr>),
+    Div(Box<LocExpr>, Box<LocExpr>),
+    Mod(Box<LocExpr>, Box<LocExpr>),
+    And(Box<LocExpr>, Box<LocExpr>),
+    Or(Box<LocExpr>, Box<LocExpr>),
+    Not(Box<LocExpr>),
+    Value(LocValue),
 }
+
+pub type LocValue = Loc<Value>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {

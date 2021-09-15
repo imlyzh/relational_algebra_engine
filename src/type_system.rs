@@ -14,92 +14,99 @@ You should have received a copy of the GNU General Public License
 along with RAE; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
-use std::{collections::HashMap, ops};
+pub mod domain;
+pub mod unify;
+
+use std::collections::HashMap;
 
 use crate::structs::Symbol;
+
+// type check\infer and unify error
+pub enum TypeError {
+    TypeUnifyError(Type, Type),
+    NameNotFoundError(Symbol),
+    TableNotFoundError(TableName),
+    FieldNotFoundError(Symbol),
+}
+
+// table info
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Env(pub HashMap<TableName, Lines>, pub HashMap<Symbol, Type>);
+
+impl Env {
+    pub fn get_table(&self, name: &TableName) -> Option<Lines> {
+        self.0.get(name).cloned()
+    }
+    pub fn get_type(&self, name: &Symbol) -> Option<Type> {
+        self.1.get(name).cloned()
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     Optional(Optional),
     Record(Record),
     Simple(SimpleType),
+    TableName(String),
+    Table(Lines),
 }
+
+macro_rules! impl_is_type {
+    ($s:ident, $t:ident) => {
+        pub fn $s(&self) -> bool {
+            if let Type::$t(_) = self {
+                true
+            } else {
+                false
+            }
+        }
+    };
+}
+
+impl Type {
+    impl_is_type!(is_optional, Optional);
+    impl_is_type!(is_record, Record);
+    impl_is_type!(is_simple_type, Simple);
+    impl_is_type!(is_table, Table);
+    impl_is_type!(is_table_name, TableName);
+}
+
+// type or null
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Optional(pub Box<Type>);
 
+// adhoc-union type
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Union(pub Vec<Type>);
+
+// record(struct) type
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Record(pub HashMap<Symbol, Type>);
 
+// Reletation etc.
+
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Special(pub String, pub Vec<Type>);
+pub struct Lines(pub Record);
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TableName(pub String);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SimpleType {
-    Null,
     Int(Option<Domain<i64>>),
     Uint(Option<Domain<u64>>),
     Float(Option<Domain<u64>>),
     String(Vec<String>),
 }
 
+// refinement type
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Domain<T> {
     Range(Box<Domain<T>>, Box<Domain<T>>),
     // Enum(Vec<Domain<T>>),
     Value(T),
-}
-
-impl<T: Clone + ops::Add<Output = T>> ops::Add<Box<Domain<T>>> for Box<Domain<T>> {
-    type Output = Box<Domain<T>>;
-
-    fn add(self, rhs: Box<Domain<T>>) -> Self::Output {
-        Box::new(*self + *rhs)
-    }
-}
-
-impl<T: Clone + ops::Add<Output = T>> ops::Add<Domain<T>> for Box<Domain<T>> {
-    type Output = Box<Domain<T>>;
-
-    fn add(self, rhs: Domain<T>) -> Self::Output {
-        Box::new(*self + rhs)
-    }
-}
-
-impl<T: Clone + ops::Add<Output = T>> ops::Add<Domain<T>> for Domain<T> {
-    type Output = Domain<T>;
-
-    fn add(self, rhs: Domain<T>) -> Self::Output {
-        match (self, rhs) {
-            (Domain::Range(l1, r1), Domain::Range(l2, r2)) => Domain::Range(l1 + l2, r1 + r2),
-            (Domain::Value(v1), Domain::Value(v2)) => Domain::Value(v1 + v2),
-
-            (Domain::Range(l, r), Domain::Value(v)) | (Domain::Value(v), Domain::Range(l, r)) => {
-                let v = Domain::Value(v);
-                Domain::Range(l + v.clone(), r + v)
-            }
-            /*
-            (Domain::Enum(a), Domain::Enum(b)) => {
-                let r = a.join(b);
-                for i in r {
-
-                }
-                todo!()
-            },
-
-            (r @ Domain::Range(_, _), Domain::Enum(e)) |
-            (Domain::Enum(e), r @ Domain::Range(_, _)) =>
-                Domain::Enum(e.into_iter().map(|x| x+r).collect()),
-
-            (Domain::Enum(e), Domain::Value(v)) |
-            (Domain::Value(v), Domain::Enum(e)) => {
-                let v = Domain::Value(v);
-                Domain::Enum(e.into_iter().map(|x| x+v).collect())
-            },
-             */
-        }
-    }
 }

@@ -14,53 +14,65 @@ You should have received a copy of the GNU General Public License
 along with RAE; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
-use super::{Expr, Symbol};
+pub mod type_check;
+
+use crate::type_system::TableName;
+
+use super::{Loc, LocExpr, Symbol};
+
+pub type LocNode = Loc<Node>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Node {
-    CrossProduct(Box<Node>, Box<Node>),               // 笛卡尔积
-    Union(Box<Node>, Box<Node>),                      // 并集
-    Difference(Box<Node>, Box<Node>),                 // 差集
-    Intersect(Box<Node>, Box<Node>),                  // 交集
-    Selection(Box<Node>, Vec<FilterExpr>),            // 选择
-    Projection(Box<Node>, Vec<Symbol>),               // 投影
-    Division(Box<Node>, Box<Node>),                   // 除
-    Rename(Box<Node>, Vec<(Symbol, Symbol)>),         // 重命名
-    InnerJoin(Box<Node>, Box<Node>, Vec<FilterExpr>), // 内连接
-    EquiJoin(Box<Node>, Box<Node>, String),           // 等值连接
-    NatureJoin(Box<Node>, Box<Node>),                 // 自然连接
-    LeftJoin(),                                       // 左连接 todo
-    RightJoin(),                                      // 右连接 todo
-    FullJoin(),                                       // 全连接 todo
-    Reduce(ItemReduce),                               // 聚合
-    Table(String),
+    CrossProduct(Box<LocNode>, Box<LocNode>),    // 笛卡尔积
+    Union(Box<LocNode>, Box<LocNode>),           // 并集
+    Difference(Box<LocNode>, Box<LocNode>),      // 差集
+    Intersect(Box<LocNode>, Box<LocNode>),       // 交集
+    Selection(Box<LocNode>, Vec<LocFilterExpr>), // 选择
+    Projection(Box<LocNode>, Vec<Symbol>),       // 投影
+    Division(Box<LocNode>, Box<LocNode>),        // 除
+    Rename(Box<LocNode>, Vec<(Symbol, Symbol)>), // 重命名
+    InnerJoin(Box<LocNode>, Box<LocNode>, Vec<FilterExpr>), // 内连接
+    EquiJoin(Box<LocNode>, Box<LocNode>, String), // 等值连接
+    NatureJoin(Box<LocNode>, Box<LocNode>),      // 自然连接
+    LeftJoin(),                                  // 左连接 todo
+    RightJoin(),                                 // 右连接 todo
+    FullJoin(),                                  // 全连接 todo
+    Reduce(LocItemReduce),                       // 聚合
+    Table(TableName),
 }
+
+pub type LocItemReduce = Loc<ItemReduce>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ItemReduce {
-    Count(Box<Node>),
-    Sum(Box<Node>, Symbol),
-    Avg(Box<Node>, Symbol),
-    Max(Box<Node>, Symbol),
-    Min(Box<Node>, Symbol),
+    Count(Box<LocNode>),
+    Sum(Box<LocNode>, Symbol),
+    Avg(Box<LocNode>, Symbol),
+    Max(Box<LocNode>, Symbol),
+    Min(Box<LocNode>, Symbol),
 }
+
+pub type LocFilterExpr = Loc<FilterExpr>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum FilterExpr {
-    And(Vec<Box<CompExpr>>),
-    Or(Vec<Box<CompExpr>>),
-    Not(Box<CompExpr>),
-    Comp(Box<CompExpr>),
+    And(Vec<Box<LocCompExpr>>),
+    Or(Vec<Box<LocCompExpr>>),
+    Not(Box<LocCompExpr>),
+    Comp(Box<LocCompExpr>),
     Range(u64, u64),
     GetItem(u64),
     GetFirst,
     GetLast,
 }
 
+pub type LocCompExpr = Loc<CompExpr>;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum CompExpr {
-    Eq(Box<Expr>, Box<Expr>),
-    Lt(Box<Expr>, Box<Expr>),
-    Gt(Box<Expr>, Box<Expr>),
-    In(Box<Expr>, Box<Node>),
+    Eq(Box<LocExpr>, Box<LocExpr>),
+    Lt(Box<LocExpr>, Box<LocExpr>),
+    Gt(Box<LocExpr>, Box<LocExpr>),
+    In(Box<LocExpr>, Box<LocExpr>),
 }

@@ -24,24 +24,32 @@ use crate::structs::Symbol;
 
 // type check\infer and unify error
 pub enum TypeError {
+    IsNotTable,
+    InValidProjectionNames,
+    NameNotFound(Symbol),
+    FieldNotFound(Symbol),
+    TableNotFound(TableName),
     TypeUnifyError(Type, Type),
-    NameNotFoundError(Symbol),
-    TableNotFoundError(TableName),
-    FieldNotFoundError(Symbol),
+    DoubleTableIsNotStyleLike(Record, Record),
 }
 
 // table info
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Env(pub HashMap<TableName, Lines>, pub HashMap<Symbol, Type>);
+pub struct Env(
+    pub HashMap<TableName, Lines>,
+    // pub HashMap<Symbol, Type>
+);
 
 impl Env {
-    pub fn get_table(&self, name: &TableName) -> Option<Lines> {
-        self.0.get(name).cloned()
+    pub fn get_table(&self, name: &TableName) -> Option<&Lines> {
+        self.0.get(name)
     }
+    /*
     pub fn get_type(&self, name: &Symbol) -> Option<Type> {
         self.1.get(name).cloned()
     }
+    //  */
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -49,14 +57,14 @@ pub enum Type {
     Optional(Optional),
     Record(Record),
     Simple(SimpleType),
-    TableName(String),
+    TableName(TableName),
     Table(Lines),
 }
 
 macro_rules! impl_is_type {
-    ($s:ident, $t:ident) => {
+    ($s:ident, $en:ident) => {
         pub fn $s(&self) -> bool {
-            if let Type::$t(_) = self {
+            if let Type::$en(_) = self {
                 true
             } else {
                 false
@@ -65,12 +73,40 @@ macro_rules! impl_is_type {
     };
 }
 
+macro_rules! impl_get_type {
+    ($s:ident, $en:ident, $t:ident) => {
+        pub fn $s(&self) -> Option<&$t> {
+            if let Type::$en(r) = self {
+                Some(r)
+            } else {
+                None
+            }
+        }
+    };
+}
+
 impl Type {
-    impl_is_type!(is_optional, Optional);
-    impl_is_type!(is_record, Record);
-    impl_is_type!(is_simple_type, Simple);
     impl_is_type!(is_table, Table);
+    impl_is_type!(is_record, Record);
+    impl_is_type!(is_optional, Optional);
+    impl_is_type!(is_simple_type, Simple);
     impl_is_type!(is_table_name, TableName);
+
+    impl_get_type!(get_table, Table, Lines);
+    impl_get_type!(get_record, Record, Record);
+    impl_get_type!(get_optional, Optional, Optional);
+    impl_get_type!(get_simple_type, Simple, SimpleType);
+    impl_get_type!(get_table_name, TableName, TableName);
+
+    pub fn get_table_from_env<'a>(&'a self, env: &'a Env) -> Option<&'a Lines> {
+        if let Type::Table(r) = self {
+            Some(r)
+        } else if let Type::TableName(x) = self {
+            env.get_table(x)
+        } else {
+            None
+        }
+    }
 }
 
 // type or null
@@ -85,8 +121,24 @@ pub struct Union(pub Vec<Type>);
 
 // record(struct) type
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Record(pub HashMap<Symbol, Type>);
+
+impl PartialEq for Record {
+    fn eq(&self, other: &Self) -> bool {
+        if self.0.len() == other.0.len() {
+            self.0.keys().all(|k| {
+                if let Some(v) = other.0.get(k) {
+                    self.0.get(k).unwrap() == v
+                } else {
+                    false
+                }
+            })
+        } else {
+            false
+        }
+    }
+}
 
 // Reletation etc.
 

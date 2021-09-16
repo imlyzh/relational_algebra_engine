@@ -34,7 +34,7 @@ pub enum Node {
     Division(Box<LocNode>, Box<LocNode>),        // 除
     Rename(Box<LocNode>, Vec<(Symbol, Symbol)>), // 重命名
     InnerJoin(Box<LocNode>, Box<LocNode>, Vec<FilterExpr>), // 内连接
-    EquiJoin(Box<LocNode>, Box<LocNode>, String), // 等值连接
+    EquiJoin(Box<LocNode>, Box<LocNode>, Symbol), // 等值连接
     NatureJoin(Box<LocNode>, Box<LocNode>),      // 自然连接
     LeftJoin(),                                  // 左连接 todo
     RightJoin(),                                 // 右连接 todo

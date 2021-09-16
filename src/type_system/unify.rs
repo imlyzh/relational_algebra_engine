@@ -157,7 +157,7 @@ fn merge_double_map_from_key(
     let l = l.get(k).unwrap();
     let r = r
         .get(k)
-        .ok_or_else(|| TypeError::FieldNotFoundError(k.clone()))?;
+        .ok_or_else(|| TypeError::FieldNotFound(k.clone()))?;
     l.unify(r).map(|x| (k.clone(), x))
 }
 

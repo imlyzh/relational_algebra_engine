@@ -15,12 +15,12 @@ You should have received a copy of the GNU General Public License
 along with RAE; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
-use std::{collections::HashSet, fmt::Debug, future::Ready};
+use std::collections::{HashMap, HashSet};
 
 use super::*;
 use crate::{
-    structs::{Loc, Pos},
-    type_system::{unify::Unify, Env, Lines, Record, Type, TypeError},
+    structs::Loc,
+    type_system::{Env, Lines, Record, Type, TypeError},
 };
 
 pub trait TypeInfer {
@@ -44,9 +44,46 @@ impl TypeInfer for LocNode {
     fn type_infer(&self, env: &Env) -> Result<Type, Loc<TypeError>> {
         match &self.0 {
             Node::CrossProduct(r1, r2) => {
-                let r1t = get_node_table_type(r1, env)?;
-                let r2t = get_node_table_type(r2, env)?;
-                todo!()
+                let Record(r1t, name1) = get_node_table_type(r1, env)?;
+                let Record(r2t, name2) = get_node_table_type(r2, env)?;
+                let record_intersect_keys: Vec<&Symbol> = r1t
+                    .keys()
+                    .flat_map(|x| r2t.keys().map(move |y| (x, y)))
+                    .filter(|(x, y)| x == y)
+                    .map(|(x, _)| x)
+                    .collect();
+                let mut r: HashMap<Symbol, Type> = HashMap::new();
+                r.extend(
+                    r1t.iter()
+                        .filter(|(k, _)| !record_intersect_keys.contains(k))
+                        .map(|(k, v)| (k.clone(), v.clone())),
+                );
+                r.extend(
+                    r2t.iter()
+                        .filter(|(k, _)| !record_intersect_keys.contains(k))
+                        .map(|(k, v)| (k.clone(), v.clone())),
+                );
+                let intersect: HashMap<Symbol, Type> = record_intersect_keys
+                    .into_iter()
+                    .flat_map(|k| {
+                        assert!(k.1.is_none());
+                        vec![
+                            (
+                                Symbol(name1.clone(), Some(k.0.clone())),
+                                r1t.get(k).unwrap().clone(),
+                            ),
+                            (
+                                Symbol(name2.clone(), Some(k.0.clone())),
+                                r2t.get(k).unwrap().clone(),
+                            ),
+                        ].into_iter()
+                    })
+                    .collect();
+                r.extend(intersect);
+                Ok(Type::Table(Lines(Record(
+                    r,
+                    format!("{}*{}", name1, name2),
+                ))))
             }
             Node::Union(r1, r2) => {
                 let r1t = get_node_table_type(r1, env)?;
@@ -89,19 +126,22 @@ impl TypeInfer for LocNode {
                         (r.0.clone(), r.1.clone())
                     })
                     .collect();
-                Ok(Type::Table(Lines(Record(r))))
+                Ok(Type::Table(Lines(Record(r, rt.1))))
             }
             Node::Division(r1, r2) => {
-                let Record(mut r1t) = get_node_table_type(r1, env)?;
-                let Record(r2t) = get_node_table_type(r2, env)?;
+                let Record(mut r1t, name1) = get_node_table_type(r1, env)?;
+                let Record(r2t, name2) = get_node_table_type(r2, env)?;
                 r2t.keys().for_each(|k| {
                     r1t.remove(k);
                 });
-                Ok(Type::Table(Lines(Record(r1t))))
+                Ok(Type::Table(Lines(Record(
+                    r1t,
+                    format!("{}/{}", name1, name2),
+                ))))
             }
             Node::InnerJoin(r1, r2, f) => {
-                let Record(r1t) = get_node_table_type(r1, env)?;
-                let Record(r2t) = get_node_table_type(r2, env)?;
+                let Record(r1t, name1) = get_node_table_type(r1, env)?;
+                let Record(r2t, name1) = get_node_table_type(r2, env)?;
                 todo!()
             }
             Node::EquiJoin(r1, r2, k) => {

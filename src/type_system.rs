@@ -122,7 +122,7 @@ pub struct Union(pub Vec<Type>);
 // record(struct) type
 
 #[derive(Debug, Clone)]
-pub struct Record(pub HashMap<Symbol, Type>);
+pub struct Record(pub HashMap<Symbol, Type>, pub String);
 
 impl PartialEq for Record {
     fn eq(&self, other: &Self) -> bool {

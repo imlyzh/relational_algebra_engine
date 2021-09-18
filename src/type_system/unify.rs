@@ -173,7 +173,7 @@ impl Unify for Record {
                 .map(|k| merge_double_map_from_key(k, &self.0, &r.0))
                 .collect();
             let r = r?;
-            Ok(Record(r))
+            Ok(Record(r, self.1.clone()))
         } else if self.0.len() - nullables.len() == r.0.len() {
             let nonnulls: Result<HashMap<Symbol, Type>, _> = self
                 .0
@@ -197,7 +197,7 @@ impl Unify for Record {
                 .collect();
             let nullables = nullables?;
             ret.extend(nullables);
-            Ok(Record(ret))
+            Ok(Record(ret, self.1.clone()))
         } else {
             Err(TypeError::TypeUnifyError(
                 Type::Record(self.clone()),

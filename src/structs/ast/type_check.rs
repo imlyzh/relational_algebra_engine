@@ -40,46 +40,58 @@ fn get_node_table_type(r: &Box<Loc<Node>>, env: &Env) -> Result<Record, Loc<Type
     Ok(rt.clone())
 }
 
+#[inline]
+fn get_double_node_to_cross_product(
+    r1t: HashMap<Symbol, Type>,
+    r2t: HashMap<Symbol, Type>,
+    name1: &String,
+    name2: &String,
+) -> Result<HashMap<Symbol, Type>, Loc<TypeError>> {
+    let record_intersect_keys: Vec<&Symbol> = r1t
+        .keys()
+        .flat_map(|x| r2t.keys().map(move |y| (x, y)))
+        .filter(|(x, y)| x == y)
+        .map(|(x, _)| x)
+        .collect();
+    let mut r: HashMap<Symbol, Type> = HashMap::new();
+    r.extend(
+        r1t.iter()
+            .filter(|(k, _)| !record_intersect_keys.contains(k))
+            .map(|(k, v)| (k.clone(), v.clone())),
+    );
+    r.extend(
+        r2t.iter()
+            .filter(|(k, _)| !record_intersect_keys.contains(k))
+            .map(|(k, v)| (k.clone(), v.clone())),
+    );
+    let intersect: HashMap<Symbol, Type> = record_intersect_keys
+        .into_iter()
+        .flat_map(|k| {
+            assert!(k.1.is_none());
+            vec![
+                (
+                    Symbol(name1.clone(), Some(k.0.clone())),
+                    r1t.get(k).unwrap().clone(),
+                ),
+                (
+                    Symbol(name2.clone(), Some(k.0.clone())),
+                    r2t.get(k).unwrap().clone(),
+                ),
+            ]
+            .into_iter()
+        })
+        .collect();
+    r.extend(intersect);
+    Ok(r)
+}
+
 impl TypeInfer for LocNode {
     fn type_infer(&self, env: &Env) -> Result<Type, Loc<TypeError>> {
         match &self.0 {
             Node::CrossProduct(r1, r2) => {
                 let Record(r1t, name1) = get_node_table_type(r1, env)?;
                 let Record(r2t, name2) = get_node_table_type(r2, env)?;
-                let record_intersect_keys: Vec<&Symbol> = r1t
-                    .keys()
-                    .flat_map(|x| r2t.keys().map(move |y| (x, y)))
-                    .filter(|(x, y)| x == y)
-                    .map(|(x, _)| x)
-                    .collect();
-                let mut r: HashMap<Symbol, Type> = HashMap::new();
-                r.extend(
-                    r1t.iter()
-                        .filter(|(k, _)| !record_intersect_keys.contains(k))
-                        .map(|(k, v)| (k.clone(), v.clone())),
-                );
-                r.extend(
-                    r2t.iter()
-                        .filter(|(k, _)| !record_intersect_keys.contains(k))
-                        .map(|(k, v)| (k.clone(), v.clone())),
-                );
-                let intersect: HashMap<Symbol, Type> = record_intersect_keys
-                    .into_iter()
-                    .flat_map(|k| {
-                        assert!(k.1.is_none());
-                        vec![
-                            (
-                                Symbol(name1.clone(), Some(k.0.clone())),
-                                r1t.get(k).unwrap().clone(),
-                            ),
-                            (
-                                Symbol(name2.clone(), Some(k.0.clone())),
-                                r2t.get(k).unwrap().clone(),
-                            ),
-                        ].into_iter()
-                    })
-                    .collect();
-                r.extend(intersect);
+                let r = get_double_node_to_cross_product(r1t, r2t, &name1, &name2)?;
                 Ok(Type::Table(Lines(Record(
                     r,
                     format!("{}*{}", name1, name2),
@@ -141,31 +153,33 @@ impl TypeInfer for LocNode {
             }
             Node::InnerJoin(r1, r2, f) => {
                 let Record(r1t, name1) = get_node_table_type(r1, env)?;
-                let Record(r2t, name1) = get_node_table_type(r2, env)?;
-                todo!()
+                let Record(r2t, name2) = get_node_table_type(r2, env)?;
+                let r = get_double_node_to_cross_product(r1t, r2t, &name1, &name2)?;
+                todo!("verify filter type");
+                Ok(Type::Table(Lines(Record(
+                    r,
+                    format!("{}><{}", name1, name2),
+                ))))
             }
             Node::EquiJoin(r1, r2, k) => {
-                let r1t = get_node_table_type(r1, env)?;
-                let r2t = get_node_table_type(r2, env)?;
-                if !(r1t.0.contains_key(k) && r2t.0.contains_key(k)) {
-                    return Err(Loc(TypeError::FieldNotFound(k.clone()), r1.1.clone()));
-                }
-                let name_set: HashSet<Symbol> = r1t.0.keys().chain(r2t.0.keys()).cloned().collect();
-                // if name_set.contains()
-                todo!()
+                let Record(r1t, name1) = get_node_table_type(r1, env)?;
+                let Record(r2t, name2) = get_node_table_type(r2, env)?;
+                let r = get_double_node_to_cross_product(r1t, r2t, &name1, &name2)?;
+                todo!("verify equi key");
+                Ok(Type::Table(Lines(Record(
+                    r,
+                    format!("{}*{}", name1, name2),
+                ))))
             }
             Node::NatureJoin(r1, r2) => {
-                let r1t = get_node_table_type(r1, env)?;
-                let r2t = get_node_table_type(r2, env)?;
-                /*
-                let t = r1t.unify(&r2t).map_err(|x| Loc(x, self.1))?;
-                if let Type::Table(t) = t {
-                    todo!()
-                } else {
-                    Err(Loc(TypeError::IsNotTable(t), self.1))
-                }
-                */
-                todo!()
+                let Record(r1t, name1) = get_node_table_type(r1, env)?;
+                let Record(r2t, name2) = get_node_table_type(r2, env)?;
+                let r = get_double_node_to_cross_product(r1t, r2t, &name1, &name2)?;
+                todo!("verify and delete name-type equi pair");
+                Ok(Type::Table(Lines(Record(
+                    r,
+                    format!("{}*{}", name1, name2),
+                ))))
             }
             Node::LeftJoin() => todo!(),
             Node::RightJoin() => todo!(),

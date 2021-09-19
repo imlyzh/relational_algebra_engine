@@ -26,6 +26,7 @@ use crate::structs::Symbol;
 pub enum TypeError {
     IsNotTable,
     InValidProjectionNames,
+    EquiJoinKeysTypeUnifyError(Symbol, Type, Symbol, Type),
     NameNotFound(Symbol),
     FieldNotFound(Symbol),
     TableNotFound(TableName),

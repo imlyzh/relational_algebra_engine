@@ -161,11 +161,24 @@ impl TypeInfer for LocNode {
                     format!("{}><{}", name1, name2),
                 ))))
             }
-            Node::EquiJoin(r1, r2, k) => {
+            Node::EquiJoin(r1, r2, ks) => {
                 let Record(r1t, name1) = get_node_table_type(r1, env)?;
                 let Record(r2t, name2) = get_node_table_type(r2, env)?;
                 let r = get_double_node_to_cross_product(r1t, r2t, &name1, &name2)?;
-                todo!("verify equi key");
+                ks.into_iter().try_for_each(|k| {
+                    let n1 = Symbol(name1.clone(), Some(k.clone()));
+                    let n2 = Symbol(name1.clone(), Some(k.clone()));
+                    let r1 = r.get(&n1).unwrap();
+                    let r2 = r.get(&n2).unwrap();
+                    if r1 == r2 {
+                        Ok(())
+                    } else {
+                        Err(Loc(
+                            TypeError::EquiJoinKeysTypeUnifyError(n1, r1.clone(), n2, r2.clone()),
+                            self.1.clone(),
+                        ))
+                    }
+                })?;
                 Ok(Type::Table(Lines(Record(
                     r,
                     format!("{}*{}", name1, name2),
@@ -174,8 +187,18 @@ impl TypeInfer for LocNode {
             Node::NatureJoin(r1, r2) => {
                 let Record(r1t, name1) = get_node_table_type(r1, env)?;
                 let Record(r2t, name2) = get_node_table_type(r2, env)?;
-                let r = get_double_node_to_cross_product(r1t, r2t, &name1, &name2)?;
-                todo!("verify and delete name-type equi pair");
+                let mut r = get_double_node_to_cross_product(r1t, r2t, &name1, &name2)?;
+                let items = r.iter().filter(|(Symbol(_, k), _)| k.is_some());
+                let deleted_items: Vec<Symbol> = items
+                    .clone()
+                    .flat_map(move |x| items.clone().map(move |y| (x, y)))
+                    .filter(|((xk, xv), (yk, yv))| xk.1 == yk.1 && xv == yv)
+                    .flat_map(|((xk, _), (yk, _))| vec![xk, yk])
+                    .cloned()
+                    .collect();
+                deleted_items.into_iter().for_each(|k| {
+                    r.remove(&k);
+                });
                 Ok(Type::Table(Lines(Record(
                     r,
                     format!("{}*{}", name1, name2),
